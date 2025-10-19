@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <title>Google Sheets CRUD Frontend</title>
 <style>
-  body { font-family: Arial, sans-serif; margin: 40px; }
+  body { font-family: Arial; margin: 40px; }
   input, button { margin: 5px; padding: 6px; }
   table { border-collapse: collapse; margin-top: 20px; width: 100%; }
   th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
@@ -41,85 +41,77 @@
 </table>
 
 <script>
-  const API_URL = "https://script.google.com/macros/s/AKfycbz1XHraDKXLkzTc1LCccsRzrppnwkJhiMZXwHlvnr7VFbN20xCEwf5vulMd5jK0jUO0HQ/exec";
-  const API_KEY = "12345"; // Your API key
+const API_URL = "https://script.google.com/macros/s/AKfycbyw5Y7O1k20tcPeBfWLHnVTIKrcVb8diJXwExHRE0A1x9t3l3uLq7Wsad-59ekAJGwQ-Q/exec";
+const API_KEY = "12345";
 
-  // Helper: Get form data
-  function getFormData() {
-    return {
-      ID: document.getElementById("id").value,
-      Name: document.getElementById("name").value,
-      Email: document.getElementById("email").value
-    };
-  }
+// Get form data
+function getFormData() {
+  return {
+    ID: document.getElementById("id").value,
+    Name: document.getElementById("name").value,
+    Email: document.getElementById("email").value
+  };
+}
 
-  // Helper: Display response in <pre>
-  function showOutput(data) {
-    document.getElementById("output").textContent = JSON.stringify(data, null, 2);
-  }
+// Display output
+function showOutput(data) {
+  document.getElementById("output").textContent = JSON.stringify(data, null, 2);
+}
 
-  // Helper: Render records table
-  function renderTable(records) {
-    const tbody = document.querySelector("#recordsTable tbody");
-    tbody.innerHTML = "";
-    records.forEach(r => {
-      const row = document.createElement("tr");
-      row.innerHTML = `<td>${r.ID}</td><td>${r.Name}</td><td>${r.Email}</td>`;
-      tbody.appendChild(row);
-    });
-  }
+// Render table
+function renderTable(records) {
+  const tbody = document.querySelector("#recordsTable tbody");
+  tbody.innerHTML = "";
+  records.forEach(r => {
+    const row = document.createElement("tr");
+    row.innerHTML = `<td>${r.ID}</td><td>${r.Name}</td><td>${r.Email}</td>`;
+    tbody.appendChild(row);
+  });
+}
 
-  // GET all records
-  async function getRecords() {
-    try {
-      const res = await fetch(`${API_URL}?action=get&apikey=${API_KEY}`);
-      const data = await res.json();
-      showOutput(data);
-      if (data.status === "success") renderTable(data.data);
-    } catch (err) {
-      showOutput({ status: "error", message: err.message });
-    }
-  }
+// GET all records
+async function getRecords() {
+  const url = `${API_URL}?action=get&apikey=${API_KEY}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  showOutput(data);
+  if (data.status === "success") renderTable(data.data);
+}
 
-  // POST helper
-  async function postRecord(action, record) {
-    try {
-      const res = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ apikey: API_KEY, action, record })
-      });
-      const data = await res.json();
-      showOutput(data);
-      getRecords(); // refresh table
-    } catch (err) {
-      showOutput({ status: "error", message: err.message });
-    }
-  }
+// Generic CRUD using GET + query params (CORS safe)
+async function sendRecord(action, record) {
+  const params = new URLSearchParams({ apikey: API_KEY, action });
+  Object.keys(record).forEach(k => { if (record[k]) params.append(k, record[k]); });
+  const url = `${API_URL}?${params.toString()}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  showOutput(data);
+  getRecords();
+}
 
-  // Add record
-  function addRecord() {
-    const record = getFormData();
-    if (!record.ID) { alert("ID is required"); return; }
-    postRecord("add", record);
-  }
+// Add
+function addRecord() {
+  const record = getFormData();
+  if (!record.ID) { alert("ID is required"); return; }
+  sendRecord("add", record);
+}
 
-  // Edit record
-  function editRecord() {
-    const record = getFormData();
-    if (!record.ID) { alert("ID is required"); return; }
-    postRecord("edit", record);
-  }
+// Edit
+function editRecord() {
+  const record = getFormData();
+  if (!record.ID) { alert("ID is required"); return; }
+  sendRecord("edit", record);
+}
 
-  // Delete record
-  function deleteRecord() {
-    const record = { ID: document.getElementById("id").value };
-    if (!record.ID) { alert("ID is required"); return; }
-    postRecord("delete", record);
-  }
+// Delete
+function deleteRecord() {
+  const id = document.getElementById("id").value;
+  if (!id) { alert("ID is required"); return; }
+  sendRecord("delete", { ID: id });
+}
 
-  // Load records on page load
-  window.onload = getRecords;
+// Load table on page load
+window.onload = getRecords;
 </script>
 
 </body>
