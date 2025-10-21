@@ -1,87 +1,264 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Free Multi-Account Uploader</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 40px; }
-    input, button { padding: 10px; margin: 6px 0; width: 100%; }
-    progress { width: 100%; height: 20px; }
-    .btn { background: #1976d2; color: white; border: none; cursor: pointer; border-radius: 5px; }
-  </style>
+<meta charset="UTF-8">
+<title>Google Sheets CRUD Frontend</title>
+<style>
+  /* === Global Layout === */
+  body {
+    font-family: "Segoe UI", Roboto, sans-serif;
+    background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+  }
+
+  .container {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    border-radius: 16px;
+    padding: 30px;
+    margin: 40px;
+    width: 90%;
+    max-width: 900px;
+    animation: fadeIn 0.8s ease;
+  }
+
+  h2 {
+    text-align: center;
+    color: #0d47a1;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  label {
+    font-weight: 600;
+    color: #0d47a1;
+  }
+
+  /* === Form Section === */
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px 20px;
+    margin-top: 20px;
+  }
+
+  input {
+    padding: 10px;
+    border: 1px solid #90caf9;
+    border-radius: 8px;
+    width: 100%;
+    box-sizing: border-box;
+    font-size: 14px;
+    transition: 0.3s;
+  }
+
+  input:focus {
+    outline: none;
+    border-color: #1976d2;
+    box-shadow: 0 0 6px rgba(25, 118, 210, 0.3);
+  }
+
+  /* === Button Styles === */
+  .btn-container {
+    margin-top: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+  }
+
+  button {
+    border: none;
+    padding: 10px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    color: white;
+    transition: 0.3s ease;
+  }
+
+  button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  }
+
+  button:nth-child(1) { background: #43a047; } /* Add */
+  button:nth-child(2) { background: #0288d1; } /* Edit */
+  button:nth-child(3) { background: #e53935; } /* Delete */
+  button:nth-child(4) { background: #6a1b9a; } /* Get All */
+
+  /* === Output and Table === */
+  pre {
+    background: #f1f8e9;
+    border-left: 4px solid #43a047;
+    padding: 15px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 13px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  th {
+    background-color: #1976d2;
+    color: white;
+    text-transform: uppercase;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+    padding: 10px;
+  }
+
+  td {
+    background: #fff;
+    padding: 10px;
+    border-bottom: 1px solid #e3f2fd;
+    transition: background 0.3s;
+  }
+
+  tr:hover td {
+    background: #e3f2fd;
+  }
+
+  /* === Animations === */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* === Responsive === */
+  @media (max-width: 700px) {
+    .form-grid {
+      grid-template-columns: 1fr;
+    }
+    h2 {
+      font-size: 20px;
+    }
+  }
+</style>
 </head>
 <body>
-  <h2>📤 Multi-Account Uploader (Free Version)</h2>
-  <p>Signed in as: <span id="email">Loading...</span></p>
-  <input type="file" id="fileInput" accept="video/*" />
-  <progress id="progress" value="0" max="100"></progress>
-  <br>
-  <button class="btn" onclick="startUpload()">Upload</button>
-  <div id="status"></div>
 
-  <script>
-    let chunkSize = 5 * 1024 * 1024; // 5MB chunks
-    let offset = 0;
-    let file, totalChunks, currentChunk = 0;
-    let fileId = null;
+<div class="container">
+  <h2>Google Sheets CRUD Dashboard</h2>
 
-    google.script.run.withSuccessHandler(email => {
-      document.getElementById('email').innerText = email;
-    }).getUserEmail();
+  <div class="form-grid">
+    <div>
+      <label>ID:</label>
+      <input id="id" placeholder="Enter unique ID">
+    </div>
+    <div>
+      <label>Name:</label>
+      <input id="name" placeholder="Full Name">
+    </div>
+    <div>
+      <label>Email:</label>
+      <input id="email" placeholder="Email Address">
+    </div>
+  </div>
 
-    function startUpload() {
-      file = document.getElementById('fileInput').files[0];
-      if (!file) return alert("Select a file first!");
-      totalChunks = Math.ceil(file.size / chunkSize);
-      offset = 0;
-      currentChunk = 0;
-      fileId = null;
-      uploadNextChunk(true);
-    }
+  <div class="btn-container">
+    <button onclick="addRecord()">➕ Add</button>
+    <button onclick="editRecord()">✏️ Edit</button>
+    <button onclick="deleteRecord()">🗑️ Delete</button>
+    <button onclick="getRecords()">📋 Get All</button>
+  </div>
 
-    function uploadNextChunk(isFirstChunk = false) {
-      const end = Math.min(offset + chunkSize, file.size);
-      const slice = file.slice(offset, end);
-      const reader = new FileReader();
+  <h3>API Response:</h3>
+  <pre id="output"></pre>
 
-      reader.onload = function(e) {
-        const bytes = Array.from(new Uint8Array(e.target.result));
-        const formData = {
-          fileName: file.name,
-          mimeType: file.type,
-          bytes,
-          isFirstChunk,
-          fileId
-        };
+  <h3>Records Table:</h3>
+  <table id="recordsTable">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Email</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
 
-        google.script.run
-          .withSuccessHandler(res => {
-            if (res.success) {
-              fileId = res.fileId;
-              offset = end;
-              currentChunk++;
-              updateProgress();
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbyw5Y7O1k20tcPeBfWLHnVTIKrcVb8diJXwExHRE0A1x9t3l3uLq7Wsad-59ekAJGwQ-Q/exec";
+const API_KEY = "12345";
 
-              if (offset < file.size) {
-                uploadNextChunk(false);
-              } else {
-                document.getElementById('status').innerHTML =
-                  `✅ Uploaded: <a href="${res.fileUrl}" target="_blank">${file.name}</a>`;
-              }
-            } else {
-              document.getElementById('status').innerText = "❌ Error: " + res.error;
-            }
-          })
-          .uploadChunk(formData);
-      };
+function getFormData() {
+  return {
+    ID: document.getElementById("id").value.trim(),
+    Name: document.getElementById("name").value.trim(),
+    Email: document.getElementById("email").value.trim()
+  };
+}
 
-      reader.readAsArrayBuffer(slice);
-    }
+function showOutput(data) {
+  document.getElementById("output").textContent = JSON.stringify(data, null, 2);
+}
 
-    function updateProgress() {
-      const percent = Math.round((currentChunk / totalChunks) * 100);
-      document.getElementById('progress').value = percent;
-    }
-  </script>
+function renderTable(records) {
+  const tbody = document.querySelector("#recordsTable tbody");
+  tbody.innerHTML = "";
+  if (!records.length) {
+    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:gray;">No Records Found</td></tr>`;
+    return;
+  }
+  records.forEach(r => {
+    const row = document.createElement("tr");
+    row.innerHTML = `<td>${r.ID}</td><td>${r.Name}</td><td>${r.Email}</td>`;
+    tbody.appendChild(row);
+  });
+}
+
+async function getRecords() {
+  const url = `${API_URL}?action=get&apikey=${API_KEY}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  showOutput(data);
+  if (data.status === "success") renderTable(data.data);
+}
+
+async function sendRecord(action, record) {
+  const params = new URLSearchParams({ apikey: API_KEY, action });
+  Object.keys(record).forEach(k => { if (record[k]) params.append(k, record[k]); });
+  const url = `${API_URL}?${params.toString()}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  showOutput(data);
+  getRecords();
+}
+
+function addRecord() {
+  const record = getFormData();
+  if (!record.ID) { alert("ID is required"); return; }
+  sendRecord("add", record);
+}
+
+function editRecord() {
+  const record = getFormData();
+  if (!record.ID) { alert("ID is required"); return; }
+  sendRecord("edit", record);
+}
+
+function deleteRecord() {
+  const id = document.getElementById("id").value.trim();
+  if (!id) { alert("ID is required"); return; }
+  sendRecord("delete", { ID: id });
+}
+
+window.onload = getRecords;
+</script>
+
 </body>
 </html>
