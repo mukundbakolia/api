@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Free Multi-Account Uploader</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; }
+    input, button { padding: 10px; margin: 6px 0; width: 100%; }
+    progress { width: 100%; height: 20px; }
+    .btn { background: #1976d2; color: white; border: none; cursor: pointer; border-radius: 5px; }
+  </style>
+</head>
+<body>
+  <h2>📤 Multi-Account Uploader (Free Version)</h2>
+  <p>Signed in as: <span id="email">Loading...</span></p>
+  <input type="file" id="fileInput" accept="video/*" />
+  <progress id="progress" value="0" max="100"></progress>
+  <br>
+  <button class="btn" onclick="startUpload()">Upload</button>
+  <div id="status"></div>
+
+  <script>
+    let chunkSize = 5 * 1024 * 1024; // 5MB chunks
+    let offset = 0;
+    let file, totalChunks, currentChunk = 0;
+    let fileId = null;
+
+    google.script.run.withSuccessHandler(email => {
+      document.getElementById('email').innerText = email;
+    }).getUserEmail();
+
+    function startUpload() {
+      file = document.getElementById('fileInput').files[0];
+      if (!file) return alert("Select a file first!");
+      totalChunks = Math.ceil(file.size / chunkSize);
+      offset = 0;
+      currentChunk = 0;
+      fileId = null;
+      uploadNextChunk(true);
+    }
+
+    function uploadNextChunk(isFirstChunk = false) {
+      const end = Math.min(offset + chunkSize, file.size);
+      const slice = file.slice(offset, end);
+      const reader = new FileReader();
+
+      reader.onload = function(e) {
+        const bytes = Array.from(new Uint8Array(e.target.result));
+        const formData = {
+          fileName: file.name,
+          mimeType: file.type,
+          bytes,
+          isFirstChunk,
+          fileId
+        };
+
+        google.script.run
+          .withSuccessHandler(res => {
+            if (res.success) {
+              fileId = res.fileId;
+              offset = end;
+              currentChunk++;
+              updateProgress();
+
+              if (offset < file.size) {
+                uploadNextChunk(false);
+              } else {
+                document.getElementById('status').innerHTML =
+                  `✅ Uploaded: <a href="${res.fileUrl}" target="_blank">${file.name}</a>`;
+              }
+            } else {
+              document.getElementById('status').innerText = "❌ Error: " + res.error;
+            }
+          })
+          .uploadChunk(formData);
+      };
+
+      reader.readAsArrayBuffer(slice);
+    }
+
+    function updateProgress() {
+      const percent = Math.round((currentChunk / totalChunks) * 100);
+      document.getElementById('progress').value = percent;
+    }
+  </script>
+</body>
+</html>
